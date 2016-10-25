@@ -1,0 +1,220 @@
+﻿@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title>Index</title>
+    <script src="~/Script/bootstrap/js/jquery.1.11.3.min.js"></script>
+    <script src="~/Script/My97DateTime/WdatePicker.js"></script>
+    <link href="~/Script/My97DateTime/skin/WdatePicker.css" rel="stylesheet" />
+    <link href="~/Script/bootstrap/css/bootstrap.min.css" rel="stylesheet" />
+    <style type="text/css">
+    .formline {
+        width: 78px;
+        text-align: right;
+    }
+</style>
+</head>
+<body>
+   <form class="form-inline" id="SeachDate">
+    <div class="row-fluid">
+        <div class="span12">
+            <label class="radio inline formline">
+                报表类型：
+            </label>
+            <label class="radio inline">
+                <input type="radio" value="dailyPaper" name="type" class="dateType">
+                日报
+            </label>
+
+            <label class="radio inline">
+                <input type="radio" value="weekly" name="type" class="dateType">
+                周报
+            </label>
+            <label class="radio inline">
+                <input type="radio" value="weekPaper" name="type" class="dateType">
+                月报
+            </label>
+            <label class="radio inline">
+                <input type="radio" value="yearPaper" name="type" class="dateType">
+                年报
+            </label>
+
+        </div>
+    </div>
+    <div class="row-fluid">
+        <div class="span6">
+            <label class="radio inline">
+                统计时间段： 
+            </label>
+            <select class="span3" id="selType">
+                <option>请选择</option>
+            </select>
+            <input type="text" readonly="readonly" id="starDate" name="starDate" class="Wdate span3" />
+            ~<input type="text" readonly="readonly" id="endDate" name="endDate" class="span3 Wdate" style="display: inline-block" />
+        </div>
+    </div>
+       </form>
+</body>
+</html>
+
+<script type="text/javascript">
+    var data = [
+      { type: "dailyPaper", SelType: [{ text: '今天', type: 'day', starData: 0, endData: 0 }, { text: '昨天', type: 'day', starData: -1, endData: -1 }, { text: '近一周', type: 'day', starData: -6, endData: 0 }, { text: '近一个月', type: 'month', starData: -1, endData: 0 }, { text: '近两个月', type: 'month', starData: -2, endData: 0 }] },
+      { type: "weekPaper", SelType: [{ text: '本月', type: 'month', starData: 0, endData: 0 }, { text: '上月', type: 'month', starData: -1, endData: -1 }, { text: '近两月', type: 'month', starData: -1, endData: 0 }, { text: '今年', type: 'month', starData: -(new Date().getMonth()), endData: 0 }, { text: '近两年', type: 'year', starData: -1, endData: 0 }] },
+      { type: "yearPaper", SelType: [{ text: '今年', type: 'year', starData: 0, endData: 0 }, { text: '去年', type: 'year', starData: -1, endData: -1 }, { text: '近两年', type: 'year', starData: -1, endData: 0 }, { text: '近五年', type: 'year', starData: -4, endData: 0 }, { text: '近十年', type: 'year', starData: -9, endData: 0 }] },
+      { type: "weekly", SelType: [{ text: '本周', type: 'current' }, { text: '上周', type: 'topDate' }, { text: '近两周', type: 'CurentTwo' }] }
+
+    ];
+    /**
+      当月报的时候会发现时间 格式有问题   使用的时候请改为获得文本框的realvalue属性值
+      当然赋值的时候自己也要为这个属性赋值
+    **/
+    $(function () {
+        //为时间段下拉框绑定chage时间
+        $("#selType").change(function () {
+            var selText = $("#selType  option:selected").text();//选中项的值
+            if (selText == "请选择") {
+                //清空时间并返回
+                $("#starDate").val("");
+                $("#endDate").val("");
+                return;
+            }
+            var selTypeValue = $("#SeachDate .dateType:checked").val();//选中报表类型的值
+            data.forEach(function (obj) {
+                if (obj.type == selTypeValue) {
+                    obj.SelType.forEach(function (optObj) {
+                        //动态计算时间
+                        if (optObj.text == selText) {
+
+                            var starDate = CountDate(optObj.starData, optObj.type);//保存开始时间
+                            var endDate = CountDate(optObj.endData, optObj.type);//保存结束时间
+
+                            switch (selTypeValue) {
+                                case "dailyPaper":
+                                    $("#starDate").val(starDate.getFullYear() + "-" + (starDate.getMonth() + 1) + "-" + starDate.getDate())
+                                    $("#endDate").val(endDate.getFullYear() + "-" + (endDate.getMonth() + 1) + "-" + endDate.getDate())
+                                    break;
+                                case "weekPaper":
+                                    //如果type等于月报同时时间差为年那么起始月份都为1月
+                                    if (optObj.type == "year") {
+                                        starDate.setMonth(0);
+                                    }
+                                    $("#starDate").val(starDate.getFullYear() + "-" + (starDate.getMonth() + 1))
+                                    $("#endDate").val(endDate.getFullYear() + "-" + (endDate.getMonth() + 1))
+                                    break;
+                                case "yearPaper":
+                                    $("#starDate").val(starDate.getFullYear())
+                                    $("#endDate").val(endDate.getFullYear())
+                                    break;
+                                case "weekly":
+                                    FactoryWeekly(optObj.type)
+                                    break;
+                                default:
+
+                            }
+
+                        }
+                    })
+                }
+            })
+           
+        })
+    })
+    //生成周报日期
+    function FactoryWeekly(type) {
+        var curentDate = new Date();
+        var weekly = curentDate.getDay();
+        var starDate = new Date();//开始时间
+        var endDate = new Date();//结束时间
+        //本周
+        if (type == "current") {
+            starDate.setDate(curentDate.getDate() - weekly);
+            endDate.setDate(starDate.getDate() + 6);
+        } else if (type == "topDate") {
+            //上周
+            starDate.setDate(curentDate.getDate() - (weekly + 6));
+            endDate.setDate(starDate.getDate() + 6);
+
+        } else if (type == "CurentTwo") {
+            //近2周
+            starDate.setDate(curentDate.getDate() - (weekly + 6));
+            endDate.setDate(starDate.getDate() + 13);
+        }
+        $("#starDate").val(starDate.getFullYear() + "-" + (starDate.getMonth() + 1) + "-" + starDate.getDate())
+        $("#endDate").val(endDate.getFullYear() + "-" + (endDate.getMonth() + 1) + "-" + endDate.getDate())
+    }
+    //为报表类型单选按钮绑定点击事件
+    $("#SeachDate").delegate(".dateType", "click", function () {
+        var $dom = $(this);
+        BindSel($dom.val());//通过值绑定对应的下拉项
+        //清空时间控件的时间
+        $("#starDate").val("");
+        $("#endDate").val("");
+        switch ($dom.val()) {
+            //切换控件的事件
+            case "dailyPaper":
+                $(".Wdate").focusin(function () {
+                    this.onfocus = function () { WdatePicker() };
+                });
+                break;
+            case "weekPaper":
+                $(".Wdate").focusin(function () {
+                    this.onfocus = function () { WdatePicker({ dateFmt: 'yyyy-MM' }) };
+                });
+                break;
+            case "yearPaper":
+                $(".Wdate").focusin(function () {
+                    this.onfocus = function () { WdatePicker({ dateFmt: 'yyyy' }) };
+                });
+                break;
+            default:
+                $(".Wdate").focusin(function () {
+                    this.onfocus = function () { WdatePicker() };
+                });
+        }
+        $("#selType option:eq(1)").prop("selected", 'selected');
+        $("#selType").change();
+        $("#serach").click();
+    })
+    //通过对应的值绑定对应的下拉框
+    function BindSel(value) {
+
+        for (var i in data) {
+            if (data[i].type == value) {
+                //先清空以前的
+                $("#selType").children().remove();
+                $("#selType").append("<option>请选择</option>")
+                data[i].SelType.forEach(function (obj) {
+                    $("#selType").append("<option>" + obj.text + "</option>");
+                })
+                break;
+            }
+        }
+    }
+
+  
+    //动态计算时间
+    function CountDate(num, type) {
+        var currentDate = new Date();//当前时间
+        switch (type) {
+            case "day":
+                currentDate.setDate(new Date().getDate() + num);
+                break;
+            case "month":
+                currentDate.setMonth(new Date().getMonth() + num);
+                break;
+            case "year":
+                currentDate.setYear(new Date().getFullYear() + num);
+                break;
+            default:
+
+        }
+        return currentDate;
+
+    }
+</script>
